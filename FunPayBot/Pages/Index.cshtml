@@ -1,0 +1,25 @@
+﻿@page
+@model IndexModel
+@{
+    ViewData["Title"] = "FunPayBot";
+
+}
+
+<div class="text-center">
+    <h1 class="display-4">FunPayBot</h1>
+    
+    @* Ссылка на Swagger только в Development *@
+    @if (Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Development")
+    {
+        <p>
+            <a href="/swagger" class="btn btn-primary">🔧 API Documentation (Swagger)</a>
+        </p>
+    }
+    
+    <p>Добро пожаловать в FunPayBot!</p>
+
+    <p>Возможности:</p>
+    <ul>
+        <li></li>
+    </ul>
+</div>
