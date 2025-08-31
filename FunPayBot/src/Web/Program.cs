@@ -1,6 +1,6 @@
 using FunPayBot.src.Domain.Entities;
 using FunPayBot.src.Infrastructure.Persistence;
-using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Builder; 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Microsoft.OpenApi.Models;
@@ -32,6 +32,8 @@ builder.Services.AddHttpClient("PythonAPI", (serviceProvider, client) =>
     var funPaySettings = serviceProvider.GetRequiredService<IOptions<FunPaySettings>>().Value;
     client.BaseAddress = new Uri(funPaySettings.PythonApiUrl);
 });
+builder.Services.Configure<FunPaySettings>(
+    builder.Configuration.GetSection("FunPaySettings"));
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", builder =>

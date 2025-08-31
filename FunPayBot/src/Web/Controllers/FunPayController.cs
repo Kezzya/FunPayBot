@@ -1,6 +1,7 @@
 ﻿using FunPayBot.src.Domain.Entities;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 using System.Text.Json;
 
 namespace FunPayBot.src.Web.Controllers
@@ -10,15 +11,21 @@ namespace FunPayBot.src.Web.Controllers
     [ApiController]
     public class FunPayController : ControllerBase
     {
-        private readonly HttpClient _regularHttpClient; // для обычных запросов
-        private readonly HttpClient _pythonApiClient;   // только для Python API
+        private readonly HttpClient _regularHttpClient;
+        private readonly HttpClient _pythonApiClient;
         private readonly ILogger<FunPayController> _logger;
         private readonly FunPaySettings _funPaySettings;
-        public FunPayController(IHttpClientFactory httpClientFactory, HttpClient regularHttpClient, ILogger<FunPayController> logger)
+
+        public FunPayController(
+            IHttpClientFactory httpClientFactory,
+            HttpClient regularHttpClient,
+            ILogger<FunPayController> logger,
+            IOptions<FunPaySettings> funPaySettings) // Use IOptions
         {
-            _regularHttpClient = regularHttpClient; // обычный HttpClient
-            _pythonApiClient = httpClientFactory.CreateClient("PythonAPI"); // Python API
+            _regularHttpClient = regularHttpClient;
+            _pythonApiClient = httpClientFactory.CreateClient("PythonAPI");
             _logger = logger;
+            _funPaySettings = funPaySettings.Value;  
         }
 
         [HttpPost("auth")]

@@ -72,9 +72,11 @@ appsettings.Development.json
 appsettings.Production.json
 *.key
 secrets.json
+.env
 
 # FastAPI/Python specific
 *.pyc
 .pytest_cache/
 .coverage
 htmlcov/
+
