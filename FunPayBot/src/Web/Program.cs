@@ -1,6 +1,8 @@
+using FunPayBot.src.Domain.Entities;
 using FunPayBot.src.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Microsoft.OpenApi.Models;
 using Npgsql.EntityFrameworkCore.PostgreSQL;
 using Serilog;
@@ -17,14 +19,18 @@ builder.Host.UseSerilog((context, configuration) =>
         .WriteTo.Console()
         .WriteTo.Seq("http://localhost:5341"));
 
+builder.Services.Configure<FunPaySettings>(
+    builder.Configuration.GetSection("FunPaySettings"));
 builder.Services.AddRazorPages();
 builder.Services.AddControllers();
 builder.Services.AddDbContext<FunPayBotDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 builder.Services.AddHttpClient();
-builder.Services.AddHttpClient("PythonAPI", client =>
+
+builder.Services.AddHttpClient("PythonAPI", (serviceProvider, client) =>
 {
-    client.BaseAddress = new Uri("http://localhost:8000/");
+    var funPaySettings = serviceProvider.GetRequiredService<IOptions<FunPaySettings>>().Value;
+    client.BaseAddress = new Uri(funPaySettings.PythonApiUrl);
 });
 builder.Services.AddCors(options =>
 {

@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Http;
+﻿using FunPayBot.src.Domain.Entities;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using System.Text.Json;
 
@@ -12,7 +13,7 @@ namespace FunPayBot.src.Web.Controllers
         private readonly HttpClient _regularHttpClient; // для обычных запросов
         private readonly HttpClient _pythonApiClient;   // только для Python API
         private readonly ILogger<FunPayController> _logger;
-
+        private readonly FunPaySettings _funPaySettings;
         public FunPayController(IHttpClientFactory httpClientFactory, HttpClient regularHttpClient, ILogger<FunPayController> logger)
         {
             _regularHttpClient = regularHttpClient; // обычный HttpClient
@@ -21,12 +22,18 @@ namespace FunPayBot.src.Web.Controllers
         }
 
         [HttpPost("auth")]
-        public async Task<IActionResult> Authenticate([FromBody] AuthRequest request)
+        public async Task<IActionResult> Authenticate()
         {
             _logger.LogInformation("Starting authentication...");
 
             try
             {
+                var request = new AuthRequest
+                {
+                    golden_key = _funPaySettings.GoldenKey,
+                    user_agent = _funPaySettings.UserAgent
+                };
+
                 var response = await _pythonApiClient.PostAsJsonAsync("auth", request);
 
                 if (!response.IsSuccessStatusCode)
