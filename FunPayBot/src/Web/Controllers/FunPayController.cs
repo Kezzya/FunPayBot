@@ -1,4 +1,6 @@
-﻿using FunPayBot.src.Domain.Entities;
+﻿using FunPayBot.src.Application.DTOs.Requests;
+using FunPayBot.src.Application.DTOs.Responses;
+using FunPayBot.src.Domain.Entities;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
@@ -63,8 +65,9 @@ namespace FunPayBot.src.Web.Controllers
         }
 
         [HttpGet("lots/{subcategoryId}")]
-        public async Task<IActionResult> GetLots(int subcategoryId, [FromQuery] string goldenKey)
+        public async Task<IActionResult> GetLots(int subcategoryId)
         {
+            string goldenKey = _funPaySettings.GoldenKey;
             _logger.LogInformation("Getting lots for subcategory: {SubcategoryId}, goldenKey: {GoldenKey}",
                                   subcategoryId, goldenKey?.Substring(0, Math.Min(8, goldenKey?.Length ?? 0)) + "***");
 
@@ -112,24 +115,130 @@ namespace FunPayBot.src.Web.Controllers
             }
         }
 
-    }
+        [HttpPost("get-lots-by-userid")]
+        public async Task<IActionResult> GetLotsByUserId([FromBody] GetLotsByUserIdRequest request)
+        {
+            _logger.LogInformation("Getting lots for user ID: {UserId}, subcategory: {SubcategoryId}",
+                request.UserId, request.SubcategoryId);
 
-    public class AuthRequest
-    {
-        public string golden_key { get; set; }
-        public string user_agent { get; set; } = "Mozilla/5.0";
-    }
+            try
+            {
+                string requestUrl = $"lots-by-user/{request.SubcategoryId}/{request.UserId}?golden_key={_funPaySettings.GoldenKey}";
+                var response = await _pythonApiClient.GetAsync(requestUrl);
 
-    public class AuthResponse
-    {
-        public string Username { get; set; }
-        public int Id { get; set; }
-    }
+                if (!response.IsSuccessStatusCode)
+                {
+                    var errorContent = await response.Content.ReadAsStringAsync();
+                    _logger.LogError("FastAPI error: {StatusCode} - {Error}", response.StatusCode, errorContent);
+                    return BadRequest($"Failed to get lots: {errorContent}");
+                }
 
-    public class LotResponse
-    {
-        public int Id { get; set; }
-        public float Price { get; set; }
-        public string Description { get; set; }
+                var userLots = await response.Content.ReadFromJsonAsync<LotResponse[]>();
+                if (userLots == null || !userLots.Any())
+                {
+                    _logger.LogWarning("No lots returned for user ID: {UserId}, subcategory: {SubcategoryId}",
+                        request.UserId, request.SubcategoryId);
+                    return NotFound("No lots found for this user in the specified subcategory");
+                }
+
+                _logger.LogInformation("Found {LotCount} lots for user ID: {UserId}", userLots.Length, request.UserId);
+                return Ok(userLots);
+            }
+            catch (HttpRequestException ex)
+            {
+                _logger.LogError(ex, "HTTP error while getting lots for user ID {UserId}", request.UserId);
+                return BadRequest($"Network error: {ex.Message}");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Unexpected error while getting lots for user ID {UserId}", request.UserId);
+                return StatusCode(500, "Internal server error");
+            }
+        }
+
+        [HttpPost("copy-lots-by-userid")]
+        public async Task<IActionResult> CopyLotsByUserId([FromBody] CopyLotsByUserIdRequest request)
+        {
+            _logger.LogInformation("Copying lots for user ID: {UserId}, subcategory: {SubcategoryId}",
+                request.UserId, request.SubcategoryId);
+
+            try
+            {
+                // Получить лоты пользователя
+                string getLotsUrl = $"lots-by-user/{request.SubcategoryId}/{request.UserId}?golden_key={_funPaySettings.GoldenKey}";
+                var getResponse = await _pythonApiClient.GetAsync(getLotsUrl);
+
+                if (!getResponse.IsSuccessStatusCode)
+                {
+                    var errorContent = await getResponse.Content.ReadAsStringAsync();
+                    _logger.LogError("FastAPI error while getting lots: {StatusCode} - {Error}", getResponse.StatusCode, errorContent);
+                    return BadRequest($"Failed to get lots: {errorContent}");
+                }
+
+                var userLots = await getResponse.Content.ReadFromJsonAsync<LotResponse[]>();
+                if (userLots == null || !userLots.Any())
+                {
+                    _logger.LogWarning("No lots found for user ID: {UserId}, subcategory: {SubcategoryId}",
+                        request.UserId, request.SubcategoryId);
+                    return NotFound("No lots found to copy for this user in the specified subcategory");
+                }
+
+                // Копировать лоты
+                var createdLots = new List<LotResponse>();
+                foreach (var lot in userLots)
+                {
+                    var createLotRequest = new CreateLotRequest
+                    {
+                        SubcategoryId = request.SubcategoryId,
+                        Price = lot.Price,
+                        Description = lot.Description
+                    };
+
+                    var createResponse = await _pythonApiClient.PostAsJsonAsync($"create-lot?golden_key={_funPaySettings.GoldenKey}", createLotRequest);
+
+                    if (!createResponse.IsSuccessStatusCode)
+                    {
+                        var errorContent = await createResponse.Content.ReadAsStringAsync();
+                        _logger.LogError("FastAPI error while creating lot: {StatusCode} - {Error}", createResponse.StatusCode, errorContent);
+                        continue; // Пропустить ошибочные лоты
+                    }
+
+                    var createdLot = await createResponse.Content.ReadFromJsonAsync<LotResponse>();
+                    if (createdLot != null)
+                    {
+                        createdLots.Add(createdLot);
+                    }
+                }
+
+                if (!createdLots.Any())
+                {
+                    _logger.LogWarning("No lots were successfully copied for user ID: {UserId}", request.UserId);
+                    return BadRequest("No lots were successfully copied");
+                }
+
+                _logger.LogInformation("Successfully copied {LotCount} lots for user ID: {UserId}", createdLots.Count, request.UserId);
+                return Ok(createdLots);
+            }
+            catch (HttpRequestException ex)
+            {
+                _logger.LogError(ex, "HTTP error while copying lots for user ID {UserId}", request.UserId);
+                return BadRequest($"Network error: {ex.Message}");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Unexpected error while copying lots for user ID {UserId}", request.UserId);
+                return StatusCode(500, "Internal server error");
+            }
+        }
     }
 }
+
+
+
+
+
+ 
+
+
+
+
