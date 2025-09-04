@@ -1,0 +1,9 @@
+﻿@page
+@model FunPayBot.Pages.CopyLots.IndexModel
+@{
+}
+<form method="post" asp-controller="Bot" asp-action="ExecuteFeature" asp-route-featureName="Copy Lots from User">
+    <input type="number" name="userId" placeholder="User ID" required />
+    <input type="number" name="subcategoryId" placeholder="Subcategory ID" required />
+    <button type="submit">Copy Lots</button>
+</form>

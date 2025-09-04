@@ -4,8 +4,6 @@
 @model IndexModel
 @{
     ViewData["Title"] = "FunPayBot";
-    var IFunPayBotFeatures = ViewBag.BotFeatures as List<IFunPayBotFeature> ?? new List<IFunPayBotFeature>() { new DefaultFeature { Name = "Default Feature", IsActive = true } };
-    ;
 }
 
 <div class="text-center">
@@ -23,7 +21,7 @@
 
     <p>Возможности:</p>
     <ul class="feature-grid">
-        @foreach (var item in IFunPayBotFeatures)
+        @foreach (var item in Model.BotFeatures)
         {
             <li><a href="@Url.Action("ExecuteFeature", "Bot", new { featureName = item })">@item</a></li>
         }

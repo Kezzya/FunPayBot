@@ -10,7 +10,6 @@
     <Folder Include="src\Application\Commands\" />
     <Folder Include="src\Application\Queries\" />
     <Folder Include="src\Application\Services\" />
-    <Folder Include="src\Application\DTOs\" />
     <Folder Include="src\Domain\Aggregates\" />
     <Folder Include="src\Infrastructure\Funpay\" />
     <Folder Include="src\Infrastructure\Telegram\" />

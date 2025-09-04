@@ -1,4 +1,6 @@
 using FunPayBot.src.Domain.Entities;
+using FunPayBot.src.Domain.Interfaces;
+using FunPayBot.src.Domain.Services;
 using FunPayBot.src.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Builder; 
 using Microsoft.EntityFrameworkCore;
@@ -21,6 +23,10 @@ builder.Host.UseSerilog((context, configuration) =>
 
 builder.Services.Configure<FunPaySettings>(
     builder.Configuration.GetSection("FunPaySettings"));
+builder.Services.AddSingleton<IFunPayBotFeature, CopyLotsFeature>();
+builder.Services.AddSingleton<LotCopyService>();
+builder.Services.AddSingleton<LotFetchService>();
+builder.Services.AddSingleton<AuthService>();
 builder.Services.AddRazorPages();
 builder.Services.AddControllers();
 builder.Services.AddDbContext<FunPayBotDbContext>(options =>
