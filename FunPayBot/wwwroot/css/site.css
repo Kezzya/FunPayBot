@@ -58,3 +58,22 @@ li {
     text-align: center;
     background-color: #f8f9fa;
 }
+.feature-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    list-style: none;
+    padding: 0;
+}
+
+    .feature-grid li {
+        background: #f0f0f0;
+        padding: 1rem;
+        border-radius: 5px;
+        text-align: center;
+    }
+    .feature-grid a {
+        text-decoration: none;
+        color: #333;
+        display: block;
+    }

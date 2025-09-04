@@ -1,8 +1,11 @@
 ﻿@page
+@using FunPayBot.src.Domain.Entities
+@using FunPayBot.src.Domain.Interfaces
 @model IndexModel
 @{
     ViewData["Title"] = "FunPayBot";
-
+    var IFunPayBotFeatures = ViewBag.BotFeatures as List<IFunPayBotFeature> ?? new List<IFunPayBotFeature>() { new DefaultFeature { Name = "Default Feature", IsActive = true } };
+    ;
 }
 
 <div class="text-center">
@@ -19,7 +22,10 @@
     <p>Добро пожаловать в FunPayBot!</p>
 
     <p>Возможности:</p>
-    <ul>
-        <li></li>
+    <ul class="feature-grid">
+        @foreach (var item in IFunPayBotFeatures)
+        {
+            <li><a href="@Url.Action("ExecuteFeature", "Bot", new { featureName = item })">@item</a></li>
+        }
     </ul>
 </div>
