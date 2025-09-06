@@ -1,6 +1,7 @@
 ﻿using FunPayBot.src.Application.DTOs.Requests;
 using FunPayBot.src.Application.DTOs.Responses;
 using FunPayBot.src.Domain.Entities;
+using FunPayBot.src.Domain.Interfaces;
 using FunPayBot.src.Domain.Services;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -16,19 +17,19 @@ namespace FunPayBot.src.Web.Controllers
     {
         private readonly AuthService _authService;
         private readonly LotFetchService _lotFetchService;
-        private readonly LotCopyService _lotCopyService;
         private readonly ILogger<FunPayController> _logger;
+        private readonly IEnumerable<IFunPayBotFeature> _features;
 
         public FunPayController(
-            AuthService authService,
-            LotFetchService lotFetchService,
-            LotCopyService lotCopyService,
-            ILogger<FunPayController> logger)
+    AuthService authService,
+    LotFetchService lotFetchService,
+    ILogger<FunPayController> logger,
+    IEnumerable<IFunPayBotFeature> features)
         {
             _authService = authService;
             _lotFetchService = lotFetchService;
-            _lotCopyService = lotCopyService;
             _logger = logger;
+            _features = features;
         }
 
         [HttpPost("auth")]
@@ -84,24 +85,26 @@ namespace FunPayBot.src.Web.Controllers
             }
         }
 
-        [HttpPost("copy-lots-by-userid")]
-        public async Task<IActionResult> CopyLotsByUserId([FromBody] CopyLotsByUserIdRequest request)
+     
+
+
+        [HttpPost]
+        public async Task<IActionResult> ExecuteFeature(string featureName)
         {
+            var feature = _features.FirstOrDefault(f =>
+                f.Name.Equals(featureName, StringComparison.OrdinalIgnoreCase));
+
+            if (feature == null || !feature.IsActive)
+                return NotFound($"Feature '{featureName}' not found or inactive");
+
             try
             {
-                var createdLots = await _lotCopyService.CopyLotsByUserIdAsync(request.UserId, request.SubcategoryId);
-                if (!createdLots.Any())
-                {
-                    _logger.LogWarning("No lots were successfully copied for user ID: {UserId}", request.UserId);
-                    return BadRequest("No lots were successfully copied");
-                }
-                _logger.LogInformation("Successfully copied {LotCount} lots for user ID: {UserId}", createdLots.Length, request.UserId);
-                return Ok(createdLots);
+                await feature.ExecuteAsync();
+                return Ok($"Feature '{featureName}' executed successfully");
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error while copying lots for user ID {UserId}", request.UserId);
-                return StatusCode(500, "Internal server error");
+                return BadRequest($"Error executing feature: {ex.Message}");
             }
         }
     }
