@@ -10,10 +10,9 @@ using System.Text.Json;
 
 namespace FunPayBot.src.Web.Controllers
 {
-
     [Route("api")]
     [ApiController]
-    public class FunPayController : ControllerBase
+    public class FunPayController : Controller
     {
         private readonly AuthService _authService;
         private readonly LotFetchService _lotFetchService;
@@ -84,9 +83,7 @@ namespace FunPayBot.src.Web.Controllers
                 return StatusCode(500, "Internal server error");
             }
         }
-
-     
-
+ 
 
         [HttpPost]
         public async Task<IActionResult> ExecuteFeature(string featureName)

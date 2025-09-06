@@ -15,7 +15,6 @@
     <Folder Include="src\Infrastructure\Telegram\" />
     <Folder Include="src\Infrastructure\Logging\" />
     <Folder Include="src\Web\wwwroot\" />
-    <Folder Include="src\Web\Controllers\" />
     <Folder Include="tests\UnitTests\" />
     <Folder Include="tests\IntegrationTests\" />
   </ItemGroup>

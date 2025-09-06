@@ -23,7 +23,7 @@
     <ul class="feature-grid">
         @foreach (var item in Model.BotFeatures)
         {
-            <li><a href="@Url.Action("ExecuteAsync", "FunPay",  new { featureName = item.Name })">@item.Description</a></li>
+            <li><a href="@Url.Action("Show", "Feature",  new { featureName = item.Name })">@item.Description</a></li>
         }
     </ul>
 </div>

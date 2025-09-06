@@ -1,8 +1,10 @@
 using FunPayBot.src.Domain.Entities;
 using FunPayBot.src.Domain.Interfaces;
 using FunPayBot.src.Domain.Services;
+using FunPayBot.src.Infrastructure;
 using FunPayBot.src.Infrastructure.Persistence;
-using Microsoft.AspNetCore.Builder; 
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Mvc.Razor;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Microsoft.OpenApi.Models;
@@ -24,6 +26,11 @@ builder.Host.UseSerilog((context, configuration) =>
 builder.Services.Configure<FunPaySettings>(
     builder.Configuration.GetSection("FunPaySettings"));
 builder.Services.AddSingleton<IFunPayBotFeature, CopyLotsFeature>();
+builder.Services.Configure<RazorViewEngineOptions>(options =>
+{
+options.ViewLocationExpanders.Add(new CustomViewLocationExpander());
+});
+
 builder.Services.AddSingleton<LotCopyService>();
 builder.Services.AddSingleton<LotFetchService>();
 builder.Services.AddSingleton<AuthService>();
