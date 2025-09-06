@@ -7,7 +7,8 @@ namespace FunPayBot.src.Domain.Entities
     {
         private readonly LotCopyService _lotCopyService;
 
-        public string Name { get; set; } = "Copy Lots from user Feature";
+        public string Name { get; set; } = "CopyLots";
+        public string Description { get; set; } = "Скопировать чужие лоты";
         public bool IsActive { get;  set; } = true;
 
         public CopyLotsFeature(LotCopyService lotCopyService)

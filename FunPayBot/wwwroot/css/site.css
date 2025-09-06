@@ -67,10 +67,9 @@ li {
 }
 
     .feature-grid li {
-        background: #f0f0f0;
         padding: 1rem;
-        border-radius: 5px;
         text-align: center;
+        cursor:pointer;
     }
     .feature-grid a {
         text-decoration: none;
