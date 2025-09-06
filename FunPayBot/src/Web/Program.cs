@@ -71,9 +71,9 @@ if (app.Environment.IsDevelopment())
         c.RoutePrefix = "swagger";  
     });
 }
-app.MapGet("/index.html", () => Results.Redirect("/"));
+ 
 app.MapRazorPages();
 
 app.MapControllers();
-app.MapFallbackToPage("/Index");
+ 
 app.Run();

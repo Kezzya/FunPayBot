@@ -1,9 +1,9 @@
 ﻿namespace FunPayBot.src.Domain.Interfaces
 {
-    public abstract class IFunPayBotFeature
+    public interface IFunPayBotFeature
     {
-        public string Name { get; set; } // Название функциональности
-        public bool IsActive { get; set; } // Статус активации
-        public abstract Task ExecuteAsync(); // Основной метод выполнения
+        string Name { get; set; } // Название функциональности
+        bool IsActive { get; set; } // Статус активации
+        Task ExecuteAsync(); // Основной метод выполнения
     }
 }

@@ -7,21 +7,21 @@ namespace FunPayBot.src.Domain.Entities
     {
         private readonly LotCopyService _lotCopyService;
 
+        public string Name { get; set; } = "Copy Lots from user Feature";
+        public bool IsActive { get;  set; } = true;
+
         public CopyLotsFeature(LotCopyService lotCopyService)
         {
             _lotCopyService = lotCopyService;
         }
-        public string Name { get; set; } = "Copy Lots from user Feature";
-        public bool IsActive { get; set; } = true;
 
-        public override async Task ExecuteAsync()
+        public async Task ExecuteAsync()
         {
-            // Пример: Копирование лотов для userId и subcategoryId
+            if (!IsActive) return;
 
-            int userId = 123; 
-            int subcategoryId = 456; 
+            int userId = 123;
+            int subcategoryId = 456;
             await _lotCopyService.CopyLotsByUserIdAsync(userId, subcategoryId);
         }
-
     }
 }
