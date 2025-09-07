@@ -25,13 +25,11 @@ namespace FunPayBot.src.Web.Controllers
             if (feature == null || !feature.IsActive)
                 return NotFound();
 
-            // Возвращаем представление для конкретной фичи
-            return View(feature.ViewName, feature);
-
+            // Обычный View с передачей модели
+            return View("CopyLotsView", feature);
         }
 
-
-    [HttpPost("feature/{featureName}/execute")]
+        [HttpPost("feature/{featureName}/execute")]
         public async Task<IActionResult> Execute(string featureName)
         {
             var feature = _features.FirstOrDefault(f =>

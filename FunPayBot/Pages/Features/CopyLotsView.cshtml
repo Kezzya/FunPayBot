@@ -1,9 +1,35 @@
-﻿@page
-@model FunPayBot.src.Domain.Entities.CopyLotsFeature
+﻿@model FunPayBot.src.Domain.Entities.CopyLotsFeature
 @{
+   
 }
-<form method="post" asp-controller="Bot" asp-action="ExecuteFeature" asp-route-featureName="Copy Lots from User">
-    <input type="number" name="userId" placeholder="User ID" required />
-    <input type="number" name="subcategoryId" placeholder="Subcategory ID" required />
-    <button type="submit">Copy Lots</button>
-</form>
+@section Scripts {
+    <script src="~/js/copylots.js"></script>
+}
+<div class="container mt-5">
+    <div class="card shadow">
+        <div class="card-body">
+            <h3 class="card-title text-center mb-4">Copy Lots</h3>
+
+            <!-- Блок с ником и аватаром (появляется после ввода userId) -->
+            <div id="userProfilePreview" class="text-center mb-4" style="display: none;">
+                <img id="userImage" class="img-fluid rounded-circle mb-2" style="max-height: 120px; border: 3px solid #f8f9fa;" alt="User Avatar">
+                <h4 id="userNameDisplay" class="mb-0 text-primary fw-bold"></h4>
+                <div class="text-muted small">Профиль загружен</div>
+            </div>
+
+            <form method="post" asp-controller="Feature" asp-action="ExecuteFeature" asp-route-featureName="CopyLots" class="row g-3">
+                <div class="col-md-6">
+                    <label for="userId" class="form-label">User</label>
+                    <input type="text" id="userId" name="userId" class="form-control" placeholder="Ссылка на профиль или ID" required />
+                </div>
+                <div class="col-md-6">
+                    <label for="subcategoryId" class="form-label">Категория</label>
+                    <input type="text" id="subcategoryId" name="subcategoryId" class="form-control" placeholder="Ссылка раздела (по желанию)" />
+                </div>
+                <div class="col-12 text-center">
+                    <button type="submit" class="btn btn-primary">Copy Lots</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

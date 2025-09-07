@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 
 namespace FunPayBot.src.Web.Controllers
 {
@@ -83,8 +84,30 @@ namespace FunPayBot.src.Web.Controllers
                 return StatusCode(500, "Internal server error");
             }
         }
- 
 
+        [HttpGet("user/{userId}/info")]
+        public async Task<IActionResult> GetUserInfo(int userId)
+        {
+            using var client = new HttpClient();
+            var url = $"https://funpay.com/users/{userId}/";
+            var html = await client.GetStringAsync(url);
+
+            // Regex to extract username from <h1 class="mb40 ..."><span class="mr4">Username</span>
+            var usernameMatch = Regex.Match(html, @"<h1[^>]*class\s*=\s*[""']mb40[^""']*[""'][^>]*>\s*<span[^>]*class\s*=\s*[""']mr4[""'][^>]*>([^<]+)</span>");
+
+            // Regex to extract background-image url
+            var avatarMatch = Regex.Match(html, @"<div class=""avatar-photo"" style=""background-image: url\(([^)]+)\);""");
+
+            if (usernameMatch.Success && avatarMatch.Success)
+            {
+                var username = usernameMatch.Groups[1].Value.Trim();
+                var imageUrl = avatarMatch.Groups[1].Value;
+
+                return Ok(new { username, imageUrl });
+            }
+
+            return NotFound();
+        }
         [HttpPost]
         public async Task<IActionResult> ExecuteFeature(string featureName)
         {
