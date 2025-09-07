@@ -7,6 +7,6 @@
         string ViewName { get; set; }
         bool IsActive { get; set; } // Статус активации
 
-        Task ExecuteAsync(); // Основной метод выполнения
+        Task ExecuteAsync(Dictionary<string, object> parameters = null);
     }
 }

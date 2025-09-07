@@ -17,12 +17,13 @@ namespace FunPayBot.src.Domain.Entities
             _lotCopyService = lotCopyService;
         }
 
-        public async Task ExecuteAsync()
+        public async Task ExecuteAsync(Dictionary<string, object> parameters = null)
         {
             if (!IsActive) return;
 
-            int userId = 123;
-            int subcategoryId = 456;
+            var userId = (int)parameters["userId"];
+            var subcategoryId = parameters.ContainsKey("subcategoryId") ? (int)parameters["subcategoryId"] : -1;
+
             await _lotCopyService.CopyLotsByUserIdAsync(userId, subcategoryId);
         }
     }
