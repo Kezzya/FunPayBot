@@ -23,8 +23,8 @@ builder.Host.UseSerilog((context, configuration) =>
         .WriteTo.Console()
         .WriteTo.Seq("http://localhost:5341"));
 
-builder.Services.Configure<FunPaySettings>(
-    builder.Configuration.GetSection("FunPaySettings"));
+builder.Services.AddSingleton<FunPaySettings>(provider =>
+    provider.GetRequiredService<IOptions<FunPaySettings>>().Value);
 builder.Services.AddSingleton<IFunPayBotFeature, CopyLotsFeature>();
 builder.Services.Configure<RazorViewEngineOptions>(options =>
 {

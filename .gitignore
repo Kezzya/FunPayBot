@@ -73,6 +73,7 @@ appsettings.Production.json
 *.key
 secrets.json
 .env
+appsettings.json
 
 # FastAPI/Python specific
 *.pyc
