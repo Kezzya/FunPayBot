@@ -3,6 +3,6 @@
     public class GetLotsByUserIdRequest
     {
         public int UserId { get; set; }
-        public int SubcategoryId { get; set; }
+        public int? SubcategoryId { get; set; }
     }
 }

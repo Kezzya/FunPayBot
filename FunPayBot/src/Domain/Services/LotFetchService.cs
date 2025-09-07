@@ -32,7 +32,7 @@ namespace FunPayBot.src.Domain.Services
             return await response.Content.ReadFromJsonAsync<LotResponse[]>();
         }
 
-        public async Task<LotResponse[]> GetLotsByUserIdAsync(int userId, int subcategoryId)
+        public async Task<LotResponse[]> GetLotsByUserIdAsync(int userId, int? subcategoryId)
         {
             var requestUrl = $"lots-by-user/{subcategoryId}/{userId}?golden_key={_funPaySettings.GoldenKey}";
             var response = await _pythonApiClient.GetAsync(requestUrl);

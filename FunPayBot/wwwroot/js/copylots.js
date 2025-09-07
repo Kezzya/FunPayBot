@@ -75,38 +75,40 @@
     }
 
     function loadAllUserLots(userId) {
-        // Показываем секцию с лотами и индикатор загрузки
         $('#userLotsSection').show();
         $('#lotsLoading').show();
         $('#lotsList').hide().empty();
 
-        // Загружаем ВСЕ лоты без указания подкатегории
         var requestData = {
             userId: parseInt(userId),
-            subcategoryId: null // null = все лоты
+            subcategoryId: null
         };
 
-        $.post('/api/get-lots-by-userid', requestData, function (data) {
-            $('#lotsLoading').hide();
-
-            if (data && data.length > 0) {
-                allUserLots = data; // Сохраняем все лоты
-
-                // Показываем все или фильтрованные (если категория уже выбрана)
-                var subcategoryId = extractSubcategoryId($('#subcategoryId').val().trim());
-                filterAndDisplayLots(subcategoryId);
-            } else {
+    
+        $.ajax({
+            url: '/api/get-lots-by-userid',
+            method: 'POST',
+            contentType: 'application/json',  
+            data: JSON.stringify(requestData),  
+            success: function (data) {
+                $('#lotsLoading').hide();
+                if (data && data.length > 0) {
+                    allUserLots = data;
+                    var subcategoryId = extractSubcategoryId($('#subcategoryId').val().trim());
+                    filterAndDisplayLots(subcategoryId);
+                } else {
+                    allUserLots = [];
+                    $('#lotsList').html('<p class="text-muted text-center">У пользователя нет лотов</p>').show();
+                }
+            },
+            error: function (xhr) {
+                $('#lotsLoading').hide();
                 allUserLots = [];
-                $('#lotsList').html('<p class="text-muted text-center">У пользователя нет лотов</p>').show();
+                var errorMessage = xhr.status === 404 ? 'Лоты не найдены' : 'Ошибка загрузки лотов';
+                $('#lotsList').html('<p class="text-danger text-center">' + errorMessage + '</p>').show();
             }
-        }).fail(function (xhr) {
-            $('#lotsLoading').hide();
-            allUserLots = [];
-            var errorMessage = xhr.status === 404 ? 'Лоты не найдены' : 'Ошибка загрузки лотов';
-            $('#lotsList').html('<p class="text-danger text-center">' + errorMessage + '</p>').show();
         });
     }
-
     function filterAndDisplayLots(subcategoryId) {
         var filteredLots = allUserLots;
 

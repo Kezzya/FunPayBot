@@ -30,15 +30,17 @@ namespace FunPayBot.src.Web.Controllers
         }
 
         [HttpPost("feature/{featureName}/execute")]
-        public async Task<IActionResult> Execute(string featureName)
+        public async Task<IActionResult> Execute(string featureName, [FromBody] Dictionary<string, object> parameters)
         {
             var feature = _features.FirstOrDefault(f =>
                 f.Name.Equals(featureName, StringComparison.OrdinalIgnoreCase));
+
             if (feature == null)
                 return NotFound();
+
             try
             {
-                await feature.ExecuteAsync();
+                await feature.ExecuteAsync(parameters ?? new Dictionary<string, object>());
                 return Ok(new { message = $"{feature.Name} executed successfully." });
             }
             catch (Exception ex)
@@ -46,6 +48,12 @@ namespace FunPayBot.src.Web.Controllers
                 _logger.LogError(ex, "Error executing feature {FeatureName}", featureName);
                 return StatusCode(500, "Internal server error");
             }
+        }
+
+        public class ExecuteFeatureRequest
+        {
+            public int UserId { get; set; }
+            public int? SubcategoryId { get; set; }
         }
     }
 }
