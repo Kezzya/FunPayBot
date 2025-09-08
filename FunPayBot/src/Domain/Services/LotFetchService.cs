@@ -18,9 +18,9 @@ namespace FunPayBot.src.Domain.Services
         private readonly FunPaySettings _funPaySettings; // Настройки с golden_key
         private readonly ILogger<LotFetchService> _logger;
 
-        public LotFetchService(HttpClient pythonApiClient, FunPaySettings funPaySettings, ILogger<LotFetchService> logger)
+        public LotFetchService(IHttpClientFactory httpClientFactory, FunPaySettings funPaySettings, ILogger<LotFetchService> logger)
         {
-            _pythonApiClient = pythonApiClient;
+            _pythonApiClient = httpClientFactory.CreateClient("PythonAPI");
             _funPaySettings = funPaySettings;
             _logger = logger;
         }
@@ -102,7 +102,7 @@ namespace FunPayBot.src.Domain.Services
 
         private async Task<List<int>> GetUserSubcategoriesAsync(int userId)
         {
-            string url = $"user-subcategories/{userId}?golden_key={_funPaySettings.GoldenKey}";
+            string url = $"get_user_subcategories/{userId}?golden_key={_funPaySettings.GoldenKey}";
             var response = await _pythonApiClient.GetAsync(url);
 
             if (!response.IsSuccessStatusCode)
