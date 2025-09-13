@@ -81,11 +81,11 @@ namespace FunPayBot.src.Domain.Services
                         foreach (var lot in userLots)
                         {
                             // Получить дополнительные детали лота
-                            var lotDetails = await GetLotDetailsAsync(lot.Id);
-                            if (lotDetails != null)
-                            {
-                                lot.DetailedDescription = lotDetails.DetailedDescription;
-                            }
+                            //var lotDetails = await GetLotDetailsAsync(lot.Id);
+                            //if (lotDetails != null)
+                            //{
+                            //    lot.DetailedDescription = lotDetails.DetailedDescription;
+                            //}
                             allLots.Add(lot);
                         }
                     }

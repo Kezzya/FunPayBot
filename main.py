@@ -205,11 +205,17 @@ def get_user_subcategories(user_id: int, golden_key: str) -> List[int]:
         account = Account(golden_key=golden_key)
         account.get()
         user = account.get_user(user_id)
+        lots = user.get_lots()
+        if not lots:
+            logger.info(f"No lots found for user {user_id}")
+            return []
+        
         subcategories = list(set(
-            lot.subcategory.id for lot in user.lots 
-            if hasattr(lot, 'subcategory') and hasattr(lot.subcategory, 'type') and 
-               lot.subcategory.type == SubCategoryTypes.COMMON
+            lot.subcategory.id for lot in lots 
+            if lot.subcategory and lot.subcategory.type == SubCategoryTypes.COMMON
         ))
+        if not subcategories:
+            logger.info(f"No common subcategories found for user {user_id}")
         return subcategories
     except Exception as e:
         logger.error(f"Error getting user subcategories: {e}")

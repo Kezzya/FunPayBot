@@ -138,7 +138,7 @@
                 <div class="col-md-6 col-lg-4">
                     <div class="card card-sm">
                         <div class="card-body p-2">
-                            <h6 class="card-title mb-1" title="${lot.title}">${truncateText(lot.title, 50)}</h6>
+                            <h6 class="card-title mb-1" title="${lot.description}">${truncateText(lot.description, 150)}</h6>
                             <p class="card-text small text-muted mb-1">Цена: <strong>${lot.price}</strong></p>
                             <p class="card-text small text-muted mb-1">Категория: ${lot.subcategoryId || 'Не указана'}</p>
                             <p class="card-text small text-muted mb-0">ID: ${lot.id}</p>
