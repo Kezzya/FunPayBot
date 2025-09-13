@@ -199,8 +199,11 @@ async def copy_lots_by_user_id(
     logger.info(f"Successfully copied {len(all_created_lots)} lots total for user ID: {user_id}")
     return all_created_lots
 
-def get_user_subcategories(user_id: int, account: Account) -> List[int]:
+@app.get("/get_user_subcategories/{user_id}")
+def get_user_subcategories(user_id: int, golden_key: str) -> List[int]:
     try:
+        account = Account(golden_key=golden_key)
+        account.get()
         user = account.get_user(user_id)
         subcategories = list(set(
             lot.subcategory.id for lot in user.lots 
