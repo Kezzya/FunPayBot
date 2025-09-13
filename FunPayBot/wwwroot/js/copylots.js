@@ -84,12 +84,12 @@
             subcategoryId: null
         };
 
-    
+
         $.ajax({
             url: '/api/get-lots-by-userid',
             method: 'POST',
-            contentType: 'application/json',  
-            data: JSON.stringify(requestData),  
+            contentType: 'application/json',
+            data: JSON.stringify(requestData),
             success: function (data) {
                 $('#lotsLoading').hide();
                 if (data && data.length > 0) {
@@ -125,39 +125,51 @@
     function displayLots(lots, subcategoryId) {
         if (lots.length === 0) {
             var message = subcategoryId
-                ? 'У пользователя нет лотов в этой категории'
+                ? `У пользователя нет лотов в подкатегории ${subcategoryId}`
                 : 'У пользователя нет лотов';
-            $('#lotsList').html('<p class="text-muted text-center">' + message + '</p>').show();
+            $('#lotsList').html(`<p class="text-muted text-center">${message}</p>`).show();
             return;
         }
 
         var lotsHtml = '<div class="row g-2">';
 
         lots.forEach(function (lot) {
+            // Обработка атрибутов
+            var attributesHtml = lot.attributes && Object.keys(lot.attributes).length > 0
+                ? Object.entries(lot.attributes).map(([key, value]) => `${key}: ${value}`).join(', ')
+                : 'Нет атрибутов';
+
             lotsHtml += `
-                <div class="col-md-6 col-lg-4">
-                    <div class="card card-sm">
-                        <div class="card-body p-2">
-                            <h6 class="card-title mb-1" title="${lot.description}">${truncateText(lot.description, 150)}</h6>
-                            <p class="card-text small text-muted mb-1">Цена: <strong>${lot.price}</strong></p>
-                            <p class="card-text small text-muted mb-1">Категория: ${lot.subcategoryId || 'Не указана'}</p>
-                            <p class="card-text small text-muted mb-0">ID: ${lot.id}</p>
-                        </div>
+            <div class="col-md-6 col-lg-4">
+                <div class="card card-sm">
+                    <div class="card-body p-2">
+                        <h6 class="card-title mb-1" title="${lot.description || 'Без описания'}">
+                            ${truncateText(lot.description || 'Без описания', 150)}
+                        </h6>
+                        <p class="card-text small text-muted mb-1">Цена: <strong>${lot.price} ${lot.currency}</strong></p>
+                        <p class="card-text small text-muted mb-1">Категория: ${lot.categoryName || 'Не указана'} (Подкатегория: ${lot.subcategoryId})</p>                     
+                        <p class="card-text small text-muted mb-0"><a href="${lot.publicLink}" target="_blank">Перейти к лоту</a></p>
                     </div>
                 </div>
-            `;
+            </div>
+        `;
         });
-
+        //        <p class="card-text small text-muted mb-1">Сервер: ${lot.server || 'Не указан'}</p>
+        //<p class="card-text small text-muted mb-1">Количество: ${lot.amount !== null ? lot.amount : 'Не указано'}</p>
+        //<p class="card-text small text-muted mb-1">Продавец: <a href="https://funpay.com/users/${lot.sellerId}/">${lot.sellerUsername}</a></p>
+        //<p class="card-text small text-muted mb-1">Автовыдача: ${lot.autoDelivery ? 'Да' : 'Нет'}</p>
+        //<p class="card-text small text-muted mb-1">Промо: ${lot.isPromo ? 'Да' : 'Нет'}</p>
+        //<p class="card-text small text-muted mb-1">Атрибуты: ${attributesHtml}</p>
+        //<p class="card-text small text-muted mb-1">ID лота: ${lot.id}</p>
         lotsHtml += '</div>';
 
-        var filterText = subcategoryId ? ` (отфильтровано по категории ${subcategoryId})` : '';
+        var filterText = subcategoryId ? ` (отфильтровано по подкатегории ${subcategoryId})` : '';
         lotsHtml += `<p class="text-center text-muted mt-3 small">
-            Показано лотов: ${lots.length} из ${allUserLots.length}${filterText}
-        </p>`;
+        Показано лотов: ${lots.length} из ${allUserLots.length}${filterText}
+    </p>`;
 
         $('#lotsList').html(lotsHtml).show();
     }
-
     function extractUserId(input) {
         if (!input) return null;
 

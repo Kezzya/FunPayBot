@@ -106,7 +106,7 @@ namespace FunPayBot.src.Domain.Services
                 var lotDetails = await detailsResponse.Content.ReadFromJsonAsync<LotResponse>();
                 if (lotDetails != null)
                 {
-                    lot.DetailedDescription = lotDetails.DetailedDescription;
+                    lot.Description = lotDetails.Description;
                 }
 
                 // Получить пустые поля для нового лота
@@ -121,8 +121,8 @@ namespace FunPayBot.src.Domain.Services
 
                 // Заполнить поля
                 newFields["price"] = lot.Price;
-                newFields["short_description"] = lot.Description;
-                newFields["description"] = lot.DetailedDescription;
+                newFields["short_description"] = lot.Title;
+                newFields["description"] = lot.Description;
                 newFields["param_0"] = lot.Server; // Сервер
                 newFields["quantity"] = lot.Amount;
                 newFields["auto_delivery"] = lot.AutoDelivery ? "on" : null;

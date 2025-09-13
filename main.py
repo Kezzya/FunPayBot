@@ -96,14 +96,25 @@ async def get_lots_by_user(subcategory_id: int, user_id: int, golden_key: str):
             )
             
         user_lots = [
-            {
-                "id": lot.id,
-                "price": lot.price,
-                "description": lot.description,
-                "seller_id": lot.seller.id,
-                "seller_username": lot.seller.username
-            } for lot in lots if lot.seller.id == user_id
-        ]
+    {
+        "Id": lot.id,
+        "Server": lot.server or "",
+        "Description": lot.description or "",
+        "Title": lot.title or "",
+        "Amount": lot.amount,
+        "Price": lot.price,
+        "Currency": lot.currency.name,
+        "SellerId": lot.seller.id,
+        "SellerUsername": lot.seller.username,
+        "AutoDelivery": lot.auto,
+        "IsPromo": lot.promo,
+        "Attributes": lot.attributes or {},
+        "SubcategoryId": lot.subcategory.id if lot.subcategory else 0,
+        "CategoryName": lot.subcategory.category.name if lot.subcategory and lot.subcategory.category else "",
+        "Html": lot.html,
+        "PublicLink": lot.public_link
+    } for lot in lots if lot.seller and lot.seller.id == user_id
+]
         
         if not user_lots:
             logger.warning(f"No lots found for user {user_id} in subcategory {subcategory_id}")
@@ -148,26 +159,25 @@ async def create_lot(request: CreateLotRequest, golden_key: str = Query(...)):
         raise HTTPException(status_code=400, detail=str(e))
 
 @app.post("/copy-lots")
-async def copy_lots_endpoint(request: CopyLotsRequest):
+async def copy_lots_endpoint(request: CopyLotsRequest) -> dict:
     try:
         loop = asyncio.get_event_loop()
-        with ThreadPoolExecutor() as executor:
-            account = Account(request.golden_key)
+        with ThreadPoolExecutor(max_workers=4) as executor:
+            account = Account(golden_key=request.golden_key)
             await loop.run_in_executor(executor, account.get)
             
-            result = await copy_lots_by_user_id(
-                request.user_id, 
-                request.subcategory_id, 
-                account,
-                loop,
-                executor
+            result = await loop.run_in_executor(
+                executor, 
+                copy_lots_from_subcategory,
+                request.user_id,
+                request.subcategory_id,
+                account
             )
             
         return {"copied_lots": result, "total": len(result)}
     except Exception as e:
         logger.error(f"Error copying lots: {str(e)}")
-        raise HTTPException(status_code=400, detail=str(e))
-
+        raise HTTPException(status_code=400, detail=f"Failed to copy lots: {str(e)}")
 async def copy_lots_by_user_id(
     user_id: int, 
     subcategory_id: Optional[int] = None, 
@@ -223,20 +233,23 @@ def get_user_subcategories(user_id: int, golden_key: str) -> List[int]:
 
 def copy_lots_from_subcategory(user_id: int, subcat: int, account: Account) -> List[dict]:
     try:
-        lots = account.get_subcategory_public_lots(SubCategoryTypes.COMMON, subcat)
-        user_lots: List[LotShortcut] = [lot for lot in lots if hasattr(lot.seller, 'user_id') and lot.seller.user_id == user_id]
+        lots = account.get_subcategory_public_lots(SubCategoryTypes.COMMON, subcat, locale="ru")
+        user_lots: List[LotShortcut] = [lot for lot in lots if lot.seller and lot.seller.id == user_id]
         created = []
 
         for lot in user_lots:
             try:
-                lot_page: LotPage = account.get_lot_page(lot.id)
+                lot_page: LotPage = account.get_lot_page(lot.id, locale="ru")
                 
-                # Get empty fields for new lot in subcategory
+                # Получаем подкатегорию для category_name
+                subcategory = lot.subcategory if lot.subcategory else account.get_subcategory(SubCategoryTypes.COMMON, subcat)
+                
+                # Получаем пустые поля для нового лота
                 response = account.method("get", f"lots/offerEdit?offer=0&node={subcat}", {}, {}, raise_not_200=True)
                 bs = BeautifulSoup(response.content.decode(), "lxml")
                 fields = {}
                 
-                # Безопасное извлечение полей
+                # Извлечение полей формы
                 for field in bs.find_all("input"):
                     if "name" in field.attrs:
                         fields[field["name"]] = field.get("value", "")
@@ -257,30 +270,23 @@ def copy_lots_from_subcategory(user_id: int, subcat: int, account: Account) -> L
                     if "name" in field.attrs and field.get("checked"):
                         fields[field["name"]] = "on"
 
-                # Fill fields from copied lot
+                # Заполняем поля из копируемого лота
                 fields["csrf_token"] = account.csrf_token
                 fields["offer_id"] = "0"
                 fields["node_id"] = str(subcat)
                 fields["price"] = str(lot.price)
-                
-                if hasattr(lot, 'description') and lot.description:
-                    fields["short_description"] = lot.description
-                
-                if hasattr(lot_page, 'detailed_description') and lot_page.detailed_description:
-                    fields["description"] = lot_page.detailed_description
-                
-                if hasattr(lot, 'server') and lot.server:
-                    fields["param_0"] = lot.server
-                
-                if hasattr(lot, 'amount') and lot.amount:
-                    fields["quantity"] = str(lot.amount)
-                
-                if hasattr(lot, 'auto') and lot.auto:
-                    fields["auto_delivery"] = "on"
+                fields["fields[summary][ru]"] = lot.description or ""
+                fields["fields[summary][en]"] = lot.description or ""
+                fields["fields[desc][ru]"] = lot_page.full_description or "" if lot_page else ""
+                fields["fields[desc][en]"] = lot_page.full_description or "" if lot_page else ""
+                fields["param_0"] = lot.server or ""
+                fields["amount"] = str(lot.amount) if lot.amount is not None else ""
+                fields["auto_delivery"] = "on" if lot.auto else ""
+                fields["fields[attributes]"] = ",".join(f"{k}:{v}" for k, v in (lot.attributes or {}).items())
 
-                # Handle images safely
-                if hasattr(lot_page, 'image_urls') and lot_page.image_urls:
-                    photo_ids = []
+                # Обработка изображений
+                photo_ids = []
+                if lot_page and lot_page.image_urls:
                     for idx, img_url in enumerate(lot_page.image_urls):
                         try:
                             response = requests.get(img_url, timeout=10)
@@ -298,21 +304,33 @@ def copy_lots_from_subcategory(user_id: int, subcat: int, account: Account) -> L
                     for idx, pid in enumerate(photo_ids):
                         fields[f"photos[{idx}]"] = str(pid)
 
-                # Save new lot
+                # Сохраняем новый лот
                 new_lot = LotFields(
-                    lot_id=0, 
-                    fields=fields, 
-                    subcategory=lot.subcategory if hasattr(lot, 'subcategory') else None,
-                    currency=lot.currency if hasattr(lot, 'currency') else None,
+                    lot_id=0,
+                    fields=fields,
+                    subcategory=subcategory,
+                    currency=lot.currency if lot.currency else Currency.RUB,
                     calc_result=None
                 )
                 
                 account.save_lot(new_lot)
                 created.append({
-                    "id": "new_lot_placeholder", 
-                    "subcategory": subcat,
-                    "original_lot_id": lot.id,
-                    "price": lot.price
+                    "Id": 0,  # ID неизвестен
+                    "Server": lot.server or "",
+                    "Description": lot.description or "",
+                    "Title": lot.title or "",
+                    "Amount": lot.amount,
+                    "Price": lot.price,
+                    "Currency": lot.currency.name if lot.currency else Currency.RUB.name,
+                    "SellerId": account.id,
+                    "SellerUsername": account.username,
+                    "AutoDelivery": lot.auto,
+                    "IsPromo": lot.promo,
+                    "Attributes": lot.attributes or {},
+                    "SubcategoryId": subcat,
+                    "CategoryName": subcategory.category.name if subcategory and subcategory.category else "",
+                    "Html": "",  # HTML недоступен для нового лота
+                    "PublicLink": f"https://funpay.com/lots/offer?id=0"  # Заглушка
                 })
                 
             except Exception as e:
@@ -323,7 +341,6 @@ def copy_lots_from_subcategory(user_id: int, subcat: int, account: Account) -> L
     except Exception as e:
         logger.error(f"Error copying lots from subcategory {subcat}: {e}")
         return []
-
 # Добавим endpoint для получения подкategories пользователя
 @app.get("/get_user_subcategories/{user_id}")
 async def get_user_subcategories_endpoint(user_id: int, golden_key: str):
