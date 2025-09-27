@@ -5,14 +5,14 @@ namespace FunPayBot.src.Domain.Entities
 {
     public class CopyLotsFeature : IFunPayBotFeature
     {
-        private readonly LotCopyService _lotCopyService;
+        private readonly CopyLotsService _lotCopyService;
 
         public string Name { get; set; } = "CopyLots";
         public string Description { get; set; } = "Скопировать чужие лоты";
         public bool IsActive { get;  set; } = true;
         public string ViewName { get; set; } = "CopyLotsView";
 
-        public CopyLotsFeature(LotCopyService lotCopyService)
+        public CopyLotsFeature(CopyLotsService lotCopyService)
         {
             _lotCopyService = lotCopyService;
         }
@@ -21,10 +21,7 @@ namespace FunPayBot.src.Domain.Entities
         {
             if (!IsActive) return;
 
-            var userId = (int)parameters["userId"];
-            var subcategoryId = parameters.ContainsKey("subcategoryId") ? (int)parameters["subcategoryId"] : -1;
-
-            await _lotCopyService.CopyLotsByUserIdAsync(userId, subcategoryId);
+            await _lotCopyService.CopyLotsAsync(parameters);
         }
     }
 }

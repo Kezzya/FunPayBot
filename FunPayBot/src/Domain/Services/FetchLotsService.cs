@@ -12,13 +12,13 @@ namespace FunPayBot.src.Domain.Services
 {
  
 
-    public class LotFetchService
+    public class FetchLotsService
     {
         private readonly HttpClient _pythonApiClient; // Клиент для вызова FastAPI
         private readonly FunPaySettings _funPaySettings; // Настройки с golden_key
-        private readonly ILogger<LotFetchService> _logger;
+        private readonly ILogger<FetchLotsService> _logger;
 
-        public LotFetchService(IHttpClientFactory httpClientFactory, FunPaySettings funPaySettings, ILogger<LotFetchService> logger)
+        public FetchLotsService(IHttpClientFactory httpClientFactory, FunPaySettings funPaySettings, ILogger<FetchLotsService> logger)
         {
             _pythonApiClient = httpClientFactory.CreateClient("PythonAPI");
             _funPaySettings = funPaySettings;

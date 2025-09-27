@@ -203,4 +203,55 @@
     function truncateText(text, maxLength) {
         return text.length > maxLength ? text.substring(0, maxLength) + '...' : text;
     }
+
+    $('#copyLotsForm').on('submit', function (e) {
+        e.preventDefault();
+        const formData = {
+            lots: allUserLots
+        }
+        // Отправляем AJAX запрос
+        $.ajax({
+            url: '/Feature/CopyLots/Execute',
+            type: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify(formData),
+            success: function (response) {
+                $result.html(`
+                            <div class="alert alert-success" role="alert">
+                                <i class="bi bi-check-circle"></i>
+                                ${response.message || 'Операция выполнена успешно!'}
+                            </div>
+                        `);
+
+                // Очищаем форму при успехе
+                $form[0].reset();
+            },
+            error: function (xhr) {
+                let errorMessage = 'Произошла ошибка при выполнении операции.';
+
+                if (xhr.responseJSON && xhr.responseJSON.message) {
+                    errorMessage = xhr.responseJSON.message;
+                } else if (xhr.responseText) {
+                    try {
+                        const errorData = JSON.parse(xhr.responseText);
+                        errorMessage = errorData.message || errorMessage;
+                    } catch (e) {
+                        errorMessage = xhr.responseText;
+                    }
+                }
+
+                $result.html(`
+                            <div class="alert alert-danger" role="alert">
+                                <i class="bi bi-exclamation-triangle"></i>
+                                ${errorMessage}
+                            </div>
+                        `);
+            },
+            complete: function () {
+                // Скрываем спиннер и разблокируем кнопку
+                $button.prop('disabled', false);
+                $spinner.addClass('d-none');
+            }
+        });
+    });
 });

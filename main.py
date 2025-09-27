@@ -309,7 +309,7 @@ def copy_lots_from_subcategory(user_id: int, subcat: int, account: Account) -> L
                     lot_id=0,
                     fields=fields,
                     subcategory=subcategory,
-                    currency=lot.currency if lot.currency else Currency.RUB,
+                    currency=lot.currency if lot.currency else "RUB",
                     calc_result=None
                 )
                 
@@ -321,7 +321,7 @@ def copy_lots_from_subcategory(user_id: int, subcat: int, account: Account) -> L
                     "Title": lot.title or "",
                     "Amount": lot.amount,
                     "Price": lot.price,
-                    "Currency": lot.currency.name if lot.currency else Currency.RUB.name,
+                    "Currency": lot.currency.name if lot.currency else "RUB",
                     "SellerId": account.id,
                     "SellerUsername": account.username,
                     "AutoDelivery": lot.auto,

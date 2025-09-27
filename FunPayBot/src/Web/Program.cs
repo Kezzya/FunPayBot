@@ -31,8 +31,8 @@ builder.Services.Configure<RazorViewEngineOptions>(options =>
 options.ViewLocationExpanders.Add(new CustomViewLocationExpander());
 });
 
-builder.Services.AddSingleton<LotCopyService>();
-builder.Services.AddSingleton<LotFetchService>();
+builder.Services.AddSingleton<CopyLotsService>();
+builder.Services.AddSingleton<FetchLotsService>();
 builder.Services.AddSingleton<AuthService>();
 builder.Services.AddRazorPages();
 builder.Services.AddControllers();

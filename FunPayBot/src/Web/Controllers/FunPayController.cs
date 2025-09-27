@@ -16,13 +16,13 @@ namespace FunPayBot.src.Web.Controllers
     public class FunPayController : Controller
     {
         private readonly AuthService _authService;
-        private readonly LotFetchService _lotFetchService;
+        private readonly FetchLotsService _lotFetchService;
         private readonly ILogger<FunPayController> _logger;
         private readonly IEnumerable<IFunPayBotFeature> _features;
 
         public FunPayController(
     AuthService authService,
-    LotFetchService lotFetchService,
+    FetchLotsService lotFetchService,
     ILogger<FunPayController> logger,
     IEnumerable<IFunPayBotFeature> features)
         {

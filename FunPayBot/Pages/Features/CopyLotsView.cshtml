@@ -17,17 +17,22 @@
                 <div class="text-muted small">Профиль загружен</div>
             </div>
 
-            <form method="post" asp-controller="Feature" asp-action="ExecuteFeature" asp-route-featureName="CopyLots" class="row g-3">
+            <form id="copyLotsForm" class="row g-3">
                 <div class="col-md-6">
                     <label for="userId" class="form-label">User</label>
-                    <input type="text" id="userId" name="userId" class="form-control" placeholder="Ссылка на профиль или ID" required />
+                    <input type="text" id="userId" name="userId" class="form-control"
+                           placeholder="Ссылка на профиль или ID" required />
                 </div>
                 <div class="col-md-6">
                     <label for="subcategoryId" class="form-label">Категория</label>
-                    <input type="text" id="subcategoryId" name="subcategoryId" class="form-control" placeholder="Ссылка раздела (по желанию)" />
+                    <input type="text" id="subcategoryId" name="subcategoryId" class="form-control"
+                           placeholder="Ссылка раздела (по желанию)" />
                 </div>
                 <div class="col-12 text-center">
-                    <button type="submit" class="btn btn-primary">Copy Lots</button>
+                    <button type="submit" class="btn btn-primary">
+                        <span class="spinner-border spinner-border-sm d-none" role="status"></span>
+                        Copy Lots
+                    </button>
                 </div>
             </form>
 
