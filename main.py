@@ -46,7 +46,11 @@ async def authenticate(request: AuthRequest):
     try:
         account = Account(request.golden_key, user_agent=request.user_agent)
         account.get()
-        return {"username": account.username, "id": account.id}
+        return {
+            "username": account.username,
+            "id": account.id,
+            "csrftoken": account.csrf_token  # Обязательно вернуть
+        }
     except Exception as e:
         logger.error(f"Auth error: {str(e)}")
         raise HTTPException(status_code=400, detail=str(e))
