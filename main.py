@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Depends, Query
+from fastapi import FastAPI, HTTPException, Depends, Query, Form, Request
 from FunPayAPI.account import Account
 from pydantic import BaseModel
 from FunPayAPI.common import enums
@@ -10,6 +10,7 @@ import logging
 from typing import List, Optional
 from bs4 import BeautifulSoup
 import requests
+from typing import Annotated
 
 # Настройка логирования
 logging.basicConfig(level=logging.INFO)
@@ -112,6 +113,7 @@ async def get_lots_by_user(subcategory_id: int, user_id: int, golden_key: str):
             account = Account(golden_key)
             await loop.run_in_executor(executor, account.get)
             
+            # Получаем список лотов
             lots = await loop.run_in_executor(
                 executor, 
                 account.get_subcategory_public_lots, 
@@ -119,26 +121,80 @@ async def get_lots_by_user(subcategory_id: int, user_id: int, golden_key: str):
                 subcategory_id
             )
             
-        user_lots = [
-    {
-        "Id": lot.id,
-        "Server": lot.server or "",
-        "Description": lot.description or "",
-        "Title": lot.title or "",
-        "Amount": lot.amount,
-        "Price": lot.price,
-        "Currency": lot.currency.name,
-        "SellerId": lot.seller.id,
-        "SellerUsername": lot.seller.username,
-        "AutoDelivery": lot.auto,
-        "IsPromo": lot.promo,
-        "Attributes": lot.attributes or {},
-        "SubcategoryId": lot.subcategory.id if lot.subcategory else 0,
-        "CategoryName": lot.subcategory.category.name if lot.subcategory and lot.subcategory.category else "",
-        "Html": lot.html,
-        "PublicLink": lot.public_link
-    } for lot in lots if lot.seller and lot.seller.id == user_id
-]
+        user_lots = []
+        for lot in lots:
+            if lot.seller and lot.seller.id == user_id:
+                description_ru = lot.description or ""
+                description_en = ""
+                
+                try:
+                    # Прямой HTTP запрос с английским языком в URL
+                    headers = {
+                        "accept": "*/*",
+                        "user-agent": account.user_agent or "Mozilla/5.0",
+                        "cookie": f"golden_key={golden_key}; PHPSESSID={account.phpsessid}"
+                    }
+                    
+                    import requests
+                    # Явно указываем английский в URL
+                    en_url = f"https://funpay.com/en/lots/offer?id={lot.id}"
+                    
+                    response = requests.get(en_url, headers=headers, timeout=10)
+                    
+                    if response.status_code == 200:
+                        from bs4 import BeautifulSoup
+                        soup = BeautifulSoup(response.content.decode(), 'lxml')
+                        
+                        # Ищем описание в английской версии
+                        for param_item in soup.find_all("div", class_="param-item"):
+                            if param_name := param_item.find("h5"):
+                                param_text = param_name.text.strip()
+                                if param_text in ("Short description", "Detailed description"):
+                                    desc_div = param_item.find("div")
+                                    if desc_div:
+                                        description_en = desc_div.text.strip()
+                                        break
+                        
+                        # Если не нашли в param-item, ищем в других местах
+                        if not description_en:
+                            # Возможно описание в другом формате
+                            desc_elements = soup.find_all("div", string=lambda text: text and len(text.strip()) > 10)
+                            for elem in desc_elements:
+                                if elem.text.strip() != description_ru and len(elem.text.strip()) > 20:
+                                    description_en = elem.text.strip()
+                                    break
+                    
+                    logger.info(f"Lot {lot.id}: RU='{description_ru[:50]}', EN='{description_en[:50]}'")
+                    
+                except Exception as e:
+                    logger.warning(f"Failed to get English description for lot {lot.id}: {e}")
+                    description_en = description_ru
+                
+                # Если английское описание пустое, используем русское
+                if not description_en:
+                    description_en = description_ru
+                
+                lot_data = {
+                    "Id": lot.id,
+                    "Server": lot.server or "",
+                    "Description": description_ru,
+                    "DescriptionEn": description_en,
+                    "Title": lot.title or "",
+                    "Amount": lot.amount,
+                    "Price": lot.price,
+                    "Currency": lot.currency.name,
+                    "SellerId": lot.seller.id,
+                    "SellerUsername": lot.seller.username,
+                    "AutoDelivery": lot.auto,
+                    "IsPromo": lot.promo,
+                    "Attributes": lot.attributes or {},
+                    "SubcategoryId": lot.subcategory.id if lot.subcategory else 0,
+                    "CategoryName": lot.subcategory.category.name if lot.subcategory and lot.subcategory.category else "",
+                    "Html": lot.html,
+                    "PublicLink": lot.public_link
+                }
+                
+                user_lots.append(lot_data)
         
         if not user_lots:
             logger.warning(f"No lots found for user {user_id} in subcategory {subcategory_id}")
@@ -149,39 +205,65 @@ async def get_lots_by_user(subcategory_id: int, user_id: int, golden_key: str):
     except Exception as e:
         logger.error(f"Error getting lots for user {user_id} in subcategory {subcategory_id}: {str(e)}")
         raise HTTPException(status_code=400, detail=str(e))
-
-@app.post("/create-lot")
-async def create_lot(request: CreateLotRequest, golden_key: str = Query(...)):
+@app.post("/create-lot-from-fields")
+async def create_lot_from_fields(
+    golden_key: str = Query(...),
+    request: Request = None
+):
     try:
-        loop = asyncio.get_event_loop()
-        with ThreadPoolExecutor() as executor:
-            account = Account(golden_key)
-            await loop.run_in_executor(executor, account.get)
-            
-            lot_fields = LotFields(
-                lot_id=0,  # 0 для нового лота
-                fields={
-                    "csrf_token": account.csrf_token,
-                    "subcategory_id": request.subcategory_id,
-                    "price": str(request.price),
-                    "description": request.description
-                }
-            )
-            
-            await loop.run_in_executor(executor, account.save_lot, lot_fields)
-            
-        logger.info(f"Created lot in subcategory {request.subcategory_id}")
+        # Получаем form-data из запроса
+        form_data = await request.form()
+        fields = dict(form_data)
+        
+        account = Account(golden_key)
+        account.get()
+        
+        # Исправляем формат цены
+        if "price" in fields and isinstance(fields["price"], str):
+            fields["price"] = fields["price"].replace(",", ".")
+        
+        # Обновляем CSRF токен
+        fields["csrf_token"] = account.csrf_token
+        
+        # Получаем subcategory_id
+        subcategory_id = int(fields.get("node_id", 0))
+        subcategory = account.get_subcategory(enums.SubCategoryTypes.COMMON, subcategory_id)
+        
+        # Отправляем данные в FunPay API
+        headers = {
+            "accept": "*/*",
+            "content-type": "application/x-www-form-urlencoded; charset=UTF-8",
+            "x-requested-with": "XMLHttpRequest",
+        }
+        
+        response = account.method("post", "lots/offerSave", headers, fields, raise_not_200=False)
+        
+        if response.status_code != 200:
+            error_content = response.content.decode()
+            logger.error(f"FunPay API error: {response.status_code} - {error_content}")
+            raise HTTPException(status_code=400, detail=f"FunPay API error: {response.status_code} - {error_content}")
+        
+        # Проверяем ответ
+        try:
+            json_response = response.json()
+            if json_response.get("error") or json_response.get("errors"):
+                error_msg = json_response.get("error") or json_response.get("errors")
+                raise HTTPException(status_code=400, detail=f"FunPay validation error: {error_msg}")
+        except ValueError:
+            pass  # Не JSON ответ, это нормально для успешного создания
+        
         return {
-            "id": 0,  # FunPayAPI не возвращает ID нового лота, используем 0 как заглушку
-            "price": request.price,
-            "description": request.description,
+            "success": True,
+            "message": "Lot created successfully",
+            "subcategory_id": subcategory_id,
+            "price": fields.get("price"),
             "seller_id": account.id,
             "seller_username": account.username
         }
+        
     except Exception as e:
-        logger.error(f"Error creating lot in subcategory {request.subcategory_id}: {str(e)}")
+        logger.error(f"Error creating lot from fields: {str(e)}")
         raise HTTPException(status_code=400, detail=str(e))
-
 @app.post("/copy-lots")
 async def copy_lots_endpoint(request: CopyLotsRequest) -> dict:
     try:

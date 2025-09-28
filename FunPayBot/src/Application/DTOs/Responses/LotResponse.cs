@@ -13,6 +13,9 @@ namespace FunPayBot.src.Application.DTOs.Responses
         [JsonPropertyName("description")]
         public string? Description { get; set; }
 
+        [JsonPropertyName("DescriptionEn")]
+        public string? DescriptionEn { get; set; }  // Новое поле
+
         [JsonPropertyName("title")]
         public string? Title { get; set; }
 
@@ -52,4 +55,5 @@ namespace FunPayBot.src.Application.DTOs.Responses
         [JsonPropertyName("publicLink")]
         public string PublicLink { get; set; }
     }
+
 }

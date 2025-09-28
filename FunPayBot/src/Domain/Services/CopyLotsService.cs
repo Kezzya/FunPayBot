@@ -98,17 +98,21 @@ namespace FunPayBot.src.Domain.Services
                     fields["fields[summary][ru]"] = lot.Title ?? "";
                     fields["fields[summary][en]"] = lot.Title ?? "";
                     fields["fields[desc][ru]"] = lot.Description ?? "";
-                    fields["fields[desc][en]"] = lot.Description ?? "";
+                    fields["fields[desc][en]"] = lot.DescriptionEn ?? "";
                     fields["param_0"] = lot.Server ?? "";
                     fields["amount"] = lot.Amount?.ToString() ?? "";
                     fields["auto_delivery"] = lot.AutoDelivery ? "on" : "";
                     fields["fields[attributes]"] = lot.Attributes != null ? string.Join(",", lot.Attributes.Select(kv => $"{kv.Key}:{kv.Value}")) : "";
 
                     // Создание лота
-                    var createResponse = await _pythonApiClient.PostAsJsonAsync(
-    $"create-lot-from-fields?golden_key={_funPaySettings.GoldenKey}",
-    fields
-);
+                
+                    var formContent = new FormUrlEncodedContent(fields.Select(kvp =>
+                        new KeyValuePair<string, string>(kvp.Key, kvp.Value?.ToString() ?? "")));
+
+                    var createResponse = await _pythonApiClient.PostAsync(
+                        $"create-lot-from-fields?golden_key={_funPaySettings.GoldenKey}",
+                        formContent
+                    );
                     if (!createResponse.IsSuccessStatusCode)
                     {
                         var errorContent = await createResponse.Content.ReadAsStringAsync();
