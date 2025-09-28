@@ -54,6 +54,26 @@ async def authenticate(request: AuthRequest):
     except Exception as e:
         logger.error(f"Auth error: {str(e)}")
         raise HTTPException(status_code=400, detail=str(e))
+@app.get("/lots/offerEdit")
+async def get_offer_edit_fields(
+    offer: int = Query(0),
+    node: int = Query(...),
+    golden_key: str = Query(...)
+):
+    try:
+        account = Account(golden_key)
+        account.get()
+        
+        # Получаем HTML страницы редактирования лота
+        response = account.method("get", f"lots/offerEdit?offer={offer}&node={node}", {}, {})
+        html_content = response.content.decode()
+        
+        # Парсим поля формы
+        fields = parse_lot_fields_from_html(html_content)
+        return {"fields": fields, "csrf_token": account.csrf_token}
+        
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 @app.get("/lots/{subcategory_id}")
 async def get_lots(subcategory_id: int, golden_key: str):
@@ -362,3 +382,27 @@ async def get_user_subcategories_endpoint(user_id: int, golden_key: str):
     except Exception as e:
         logger.error(f"Error getting user subcategories: {str(e)}")
         raise HTTPException(status_code=400, detail=str(e))
+
+def parse_lot_fields_from_html(html_content: str) -> dict:
+    from bs4 import BeautifulSoup
+    bs = BeautifulSoup(html_content, "lxml")
+    
+    fields = {}
+    # Извлекаем все input поля
+    for field in bs.find_all("input"):
+        if "name" in field.attrs:
+            fields[field["name"]] = field.get("value", "")
+    
+    # Извлекаем textarea
+    for field in bs.find_all("textarea"):
+        if "name" in field.attrs:
+            fields[field["name"]] = field.get_text(strip=True)
+    
+    # Извлекаем select
+    for field in bs.find_all("select"):
+        if "name" in field.attrs:
+            selected = field.find("option", selected=True)
+            if selected:
+                fields[field["name"]] = selected.get("value", "")
+    
+    return fields

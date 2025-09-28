@@ -115,19 +115,5 @@ namespace FunPayBot.src.Domain.Services
             var subcategories = await response.Content.ReadFromJsonAsync<int[]>();
             return subcategories?.ToList() ?? new List<int>();
         }
-
-        private async Task<LotResponse> GetLotDetailsAsync(int lotId)
-        {
-            string url = $"lot-details/{lotId}?golden_key={_funPaySettings.GoldenKey}";
-            var response = await _pythonApiClient.GetAsync(url);
-
-            if (!response.IsSuccessStatusCode)
-            {
-                _logger.LogError("Failed to get lot details for lot {LotId}", lotId);
-                return null;
-            }
-
-            return await response.Content.ReadFromJsonAsync<LotResponse>();
-        }
     }
 }

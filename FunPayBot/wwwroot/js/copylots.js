@@ -209,6 +209,7 @@
         const formData = {
             lots: allUserLots
         }
+        const $result = $('#result');
         // Отправляем AJAX запрос
         $.ajax({
             url: '/Feature/CopyLots/Execute',
@@ -223,8 +224,7 @@
                             </div>
                         `);
 
-                // Очищаем форму при успехе
-                $form[0].reset();
+ 
             },
             error: function (xhr) {
                 let errorMessage = 'Произошла ошибка при выполнении операции.';
@@ -248,9 +248,7 @@
                         `);
             },
             complete: function () {
-                // Скрываем спиннер и разблокируем кнопку
-                $button.prop('disabled', false);
-                $spinner.addClass('d-none');
+
             }
         });
     });
