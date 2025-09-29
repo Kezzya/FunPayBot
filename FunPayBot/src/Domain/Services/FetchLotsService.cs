@@ -80,12 +80,9 @@ namespace FunPayBot.src.Domain.Services
                     {
                         foreach (var lot in userLots)
                         {
-                            // Получить дополнительные детали лота
-                            //var lotDetails = await GetLotDetailsAsync(lot.Id);
-                            //if (lotDetails != null)
-                            //{
-                            //    lot.DetailedDescription = lotDetails.DetailedDescription;
-                            //}
+                            // Логирование для отладки
+                            _logger.LogInformation("Lot {LotId}: Title='{Title}', TitleEn='{TitleEn}', DescriptionEn='{DescriptionEn}'",
+                                lot.Id, lot.Title, lot.TitleEn, lot.DescriptionEn);
                             allLots.Add(lot);
                         }
                     }
@@ -99,7 +96,6 @@ namespace FunPayBot.src.Domain.Services
             _logger.LogInformation("Found {LotCount} lots total for user ID: {UserId}", allLots.Count, userId);
             return allLots.ToArray();
         }
-
         private async Task<List<int>> GetUserSubcategoriesAsync(int userId)
         {
             string url = $"get_user_subcategories/{userId}?golden_key={_funPaySettings.GoldenKey}";

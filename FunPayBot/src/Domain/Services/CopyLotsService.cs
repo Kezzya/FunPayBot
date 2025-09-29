@@ -4,6 +4,7 @@ using FunPayBot.src.Domain.Services;
 using HtmlAgilityPack;
 using Microsoft.Extensions.Options;
 using System.Globalization;
+using System.Text.Json;
 
 
 namespace FunPayBot.src.Domain.Services
@@ -86,7 +87,6 @@ namespace FunPayBot.src.Domain.Services
                         throw new Exception($"Failed to get lot fields: {fieldsResponse.StatusCode} - {errorContent}");
                     }
 
-                    // Десериализация HTML ответа
                     var htmlContent = await fieldsResponse.Content.ReadAsStringAsync();
                     var fields = ParseLotFieldsFromHtml(htmlContent);
 
@@ -94,18 +94,26 @@ namespace FunPayBot.src.Domain.Services
                     fields["csrf_token"] = csrfToken;
                     fields["offer_id"] = "0";
                     fields["node_id"] = lot.SubcategoryId.ToString();
-                    fields["price"] = lot.Price.ToString();
+                    fields["price"] = lot.Price.ToString().Replace(",", ".");
+
+                    // Краткие и подробные описания
                     fields["fields[summary][ru]"] = lot.Title ?? "";
-                    fields["fields[summary][en]"] = lot.Title ?? "";
+                    //fields["fields[summary][en]"] = lot.Title ?? "";
+                    fields["fields[summary][en]"] = lot.TitleEn ?? "";
                     fields["fields[desc][ru]"] = lot.Description ?? "";
-                    fields["fields[desc][en]"] = lot.DescriptionEn ?? "";
+                    fields["fields[desc][en]"] = lot.DescriptionEn ?? lot.TitleEn ?? "";
+
+                    // Динамически получаем ID для полей
+                    fields["server_id"] = GetDynamicFieldValue(lot.Attributes, "server") ?? "";
+                    fields["side_id"] = GetDynamicFieldValue(lot.Attributes, "side") ?? "";
+                    fields["fields[level]"] = GetValueFromAttributes(lot.Attributes, "f-level") ?? "";
+                    fields["fields[class]"] = GetDynamicFieldValue(lot.Attributes, "f-class") ?? "";
+
                     fields["param_0"] = lot.Server ?? "";
                     fields["amount"] = lot.Amount?.ToString() ?? "";
                     fields["auto_delivery"] = lot.AutoDelivery ? "on" : "";
                     fields["fields[attributes]"] = lot.Attributes != null ? string.Join(",", lot.Attributes.Select(kv => $"{kv.Key}:{kv.Value}")) : "";
-
-                    // Создание лота
-                
+                    fields["fields[class]"] = "%Заклинатель-Spiritmaster";
                     var formContent = new FormUrlEncodedContent(fields.Select(kvp =>
                         new KeyValuePair<string, string>(kvp.Key, kvp.Value?.ToString() ?? "")));
 
@@ -135,8 +143,45 @@ namespace FunPayBot.src.Domain.Services
             _logger.LogInformation("Successfully copied {LotCount} lots", createdLots.Count);
             return createdLots.ToArray();
         }
+        private string? GetDynamicFieldValue(Dictionary<string, object>? attributes, string attributeKey)
+        {
+            if (attributes == null || !attributes.TryGetValue(attributeKey, out var attrValue))
+                return null;
+            return attrValue?.ToString();
+        }
+        private Dictionary<string, string> ParseSelectOptions(string html, string selectName)
+        {
+            var doc = new HtmlDocument();
+            doc.LoadHtml(html);
 
+            var select = doc.DocumentNode
+                .SelectSingleNode($"//select[@name='{selectName}']");
 
+            if (select == null) return new Dictionary<string, string>();
+
+            var options = new Dictionary<string, string>();
+            foreach (var option in select.SelectNodes(".//option"))
+            {
+                var value = option.GetAttributeValue("value", "");
+                var text = option.InnerText?.Trim().ToLower();
+
+                if (!string.IsNullOrEmpty(value) && !string.IsNullOrEmpty(text))
+                {
+                    options[text] = value;
+                }
+            }
+
+            return options;
+        }
+
+        private string? GetValueFromAttributes(Dictionary<string, object>? attributes, string key)
+        {
+            if (attributes != null && attributes.TryGetValue(key, out var value))
+            {
+                return value.ToString();
+            }
+            return null;
+        }
         public class AuthResponse
         {
             public string Username { get; set; }

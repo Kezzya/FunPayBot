@@ -113,7 +113,6 @@ async def get_lots_by_user(subcategory_id: int, user_id: int, golden_key: str):
             account = Account(golden_key)
             await loop.run_in_executor(executor, account.get)
             
-            # Получаем список лотов
             lots = await loop.run_in_executor(
                 executor, 
                 account.get_subcategory_public_lots, 
@@ -126,60 +125,36 @@ async def get_lots_by_user(subcategory_id: int, user_id: int, golden_key: str):
             if lot.seller and lot.seller.id == user_id:
                 description_ru = lot.description or ""
                 description_en = ""
+                title_en = ""
                 
                 try:
-                    # Прямой HTTP запрос с английским языком в URL
-                    headers = {
-                        "accept": "*/*",
-                        "user-agent": account.user_agent or "Mozilla/5.0",
-                        "cookie": f"golden_key={golden_key}; PHPSESSID={account.phpsessid}"
-                    }
-                    
-                    import requests
-                    # Явно указываем английский в URL
-                    en_url = f"https://funpay.com/en/lots/offer?id={lot.id}"
-                    
-                    response = requests.get(en_url, headers=headers, timeout=10)
-                    
-                    if response.status_code == 200:
-                        from bs4 import BeautifulSoup
-                        soup = BeautifulSoup(response.content.decode(), 'lxml')
-                        
-                        # Ищем описание в английской версии
-                        for param_item in soup.find_all("div", class_="param-item"):
-                            if param_name := param_item.find("h5"):
-                                param_text = param_name.text.strip()
-                                if param_text in ("Short description", "Detailed description"):
-                                    desc_div = param_item.find("div")
-                                    if desc_div:
-                                        description_en = desc_div.text.strip()
-                                        break
-                        
-                        # Если не нашли в param-item, ищем в других местах
-                        if not description_en:
-                            # Возможно описание в другом формате
-                            desc_elements = soup.find_all("div", string=lambda text: text and len(text.strip()) > 10)
-                            for elem in desc_elements:
-                                if elem.text.strip() != description_ru and len(elem.text.strip()) > 20:
-                                    description_en = elem.text.strip()
-                                    break
-                    
-                    logger.info(f"Lot {lot.id}: RU='{description_ru[:50]}', EN='{description_en[:50]}'")
+                    lot_page_en = await loop.run_in_executor(
+                        executor,
+                        account.get_lot_page,
+                        lot.id,
+                        "en"
+                    )
+                    title_en = lot_page_en.description or ""
+                    description_en = lot_page_en.full_description or ""
+                    logger.info(f"Lot {lot.id}: RU='{description_ru[:50]}', EN='{description_en[:50]}', Title EN='{title_en[:50]}'")
                     
                 except Exception as e:
-                    logger.warning(f"Failed to get English description for lot {lot.id}: {e}")
+                    logger.warning(f"Failed to get English description or title for lot {lot.id}: {e}")
                     description_en = description_ru
+                    title_en = lot.title or ""
                 
-                # Если английское описание пустое, используем русское
                 if not description_en:
                     description_en = description_ru
+                if not title_en:
+                    title_en = lot.title or ""
                 
                 lot_data = {
                     "Id": lot.id,
                     "Server": lot.server or "",
-                    "Description": description_ru,
+                    "Description": lot.description or "",
                     "DescriptionEn": description_en,
                     "Title": lot.title or "",
+                    "TitleEn": title_en,
                     "Amount": lot.amount,
                     "Price": lot.price,
                     "Currency": lot.currency.name,
@@ -211,58 +186,120 @@ async def create_lot_from_fields(
     request: Request = None
 ):
     try:
-        # Получаем form-data из запроса
-        form_data = await request.form()
-        fields = dict(form_data)
+        # Получаем form-data
+        body = await request.body()
+        body_str = body.decode('utf-8')
+        from urllib.parse import parse_qs, unquote
+        parsed = parse_qs(body_str, keep_blank_values=True)
+        
+        fields = {}
+        for key, values in parsed.items():
+            fields[key] = unquote(values[0]) if values else ""
+        
+        logger.info(f"Received fields: {list(fields.keys())}")
+        logger.info(f"Fields content: {fields}")
         
         account = Account(golden_key)
         account.get()
         
-        # Исправляем формат цены
-        if "price" in fields and isinstance(fields["price"], str):
-            fields["price"] = fields["price"].replace(",", ".")
+        # Получаем эталонную форму для сравнения
+        subcategory_id = int(fields.get("node_id", 0))
+        try:
+            reference_response = account.method("get", f"lots/offerEdit?offer=0&node={subcategory_id}", {}, {})
+            reference_html = reference_response.content.decode()
+            
+            # Парсим эталонную форму
+            from bs4 import BeautifulSoup
+            soup = BeautifulSoup(reference_html, "lxml")
+            
+            required_fields = set()
+            for field in soup.find_all("input"):
+                if "name" in field.attrs and field.get("required"):
+                    required_fields.add(field["name"])
+            
+            for field in soup.find_all("select"):
+                if "name" in field.attrs and field.get("required"):
+                    required_fields.add(field["name"])
+                    
+            for field in soup.find_all("textarea"):
+                if "name" in field.attrs and field.get("required"):
+                    required_fields.add(field["name"])
+            
+            logger.info(f"Required fields found: {required_fields}")
+            
+            # Проверяем какие поля отсутствуют
+            missing_fields = []
+            for req_field in required_fields:
+                if req_field not in fields or not fields[req_field].strip():
+                    missing_fields.append(req_field)
+            
+            if missing_fields:
+                logger.error(f"Missing required fields: {missing_fields}")
+            
+            # Проверяем все поля формы
+            all_form_fields = set()
+            for field in soup.find_all(["input", "select", "textarea"]):
+                if "name" in field.attrs:
+                    all_form_fields.add(field["name"])
+            
+            logger.info(f"All form fields: {all_form_fields}")
+            logger.info(f"Our fields: {set(fields.keys())}")
+            logger.info(f"Missing from our request: {all_form_fields - set(fields.keys())}")
+            
+        except Exception as e:
+            logger.warning(f"Could not parse reference form: {e}")
         
-        # Обновляем CSRF токен
+        # Обновляем CSRF и отправляем
         fields["csrf_token"] = account.csrf_token
         
-        # Получаем subcategory_id
-        subcategory_id = int(fields.get("node_id", 0))
-        subcategory = account.get_subcategory(enums.SubCategoryTypes.COMMON, subcategory_id)
+        if "price" in fields:
+            fields["price"] = fields["price"].replace(",", ".")
         
-        # Отправляем данные в FunPay API
         headers = {
             "accept": "*/*",
             "content-type": "application/x-www-form-urlencoded; charset=UTF-8",
             "x-requested-with": "XMLHttpRequest",
         }
         
+        logger.info(f"Sending to FunPay: {fields}")
+        
         response = account.method("post", "lots/offerSave", headers, fields, raise_not_200=False)
+        
+        logger.info(f"FunPay response status: {response.status_code}")
+        logger.info(f"FunPay response content: {response.content.decode()[:500]}")
         
         if response.status_code != 200:
             error_content = response.content.decode()
-            logger.error(f"FunPay API error: {response.status_code} - {error_content}")
             raise HTTPException(status_code=400, detail=f"FunPay API error: {response.status_code} - {error_content}")
         
-        # Проверяем ответ
         try:
             json_response = response.json()
-            if json_response.get("error") or json_response.get("errors"):
-                error_msg = json_response.get("error") or json_response.get("errors")
-                raise HTTPException(status_code=400, detail=f"FunPay validation error: {error_msg}")
+            if json_response.get("error"):
+                logger.error(f"FunPay returned error: {json_response}")
+                raise HTTPException(status_code=400, detail=f"FunPay validation error: {json_response.get('error')}")
+            if json_response.get("errors"):
+                logger.error(f"FunPay returned errors: {json_response}")
+                # Детальные ошибки валидации
+                error_details = []
+                if isinstance(json_response["errors"], list):
+                    for error_item in json_response["errors"]:
+                        if isinstance(error_item, list) and len(error_item) == 2:
+                            field_name, error_msg = error_item
+                            error_details.append(f"{field_name}: {error_msg}")
+                raise HTTPException(status_code=400, detail=f"FunPay validation errors: {'; '.join(error_details)}")
         except ValueError:
-            pass  # Не JSON ответ, это нормально для успешного создания
+            pass
         
         return {
             "success": True,
             "message": "Lot created successfully",
             "subcategory_id": subcategory_id,
-            "price": fields.get("price"),
             "seller_id": account.id,
             "seller_username": account.username
         }
         
     except Exception as e:
-        logger.error(f"Error creating lot from fields: {str(e)}")
+        logger.error(f"Error creating lot: {str(e)}")
         raise HTTPException(status_code=400, detail=str(e))
 @app.post("/copy-lots")
 async def copy_lots_endpoint(request: CopyLotsRequest) -> dict:

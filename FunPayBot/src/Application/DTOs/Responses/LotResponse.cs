@@ -13,11 +13,14 @@ namespace FunPayBot.src.Application.DTOs.Responses
         [JsonPropertyName("description")]
         public string? Description { get; set; }
 
-        [JsonPropertyName("DescriptionEn")]
+        [JsonPropertyName("descriptionEn")]
         public string? DescriptionEn { get; set; }  // Новое поле
 
         [JsonPropertyName("title")]
         public string? Title { get; set; }
+
+        [JsonPropertyName("titleEn")]
+        public string? TitleEn { get; set; }
 
         [JsonPropertyName("amount")]
         public int? Amount { get; set; }
